@@ -50,12 +50,15 @@ def random_training_set(chunk_len, batch_size):
     return inp, target
 
 def train(inp, target):
+    
     hidden = decoder.init_hidden(args.batch_size)
+    
+    
     if args.cuda:
         hidden = hidden.cuda()
     decoder.zero_grad()
     loss = 0
-
+    total_loss = 0
     for c in range(args.chunk_len):
         output, hidden = decoder(inp[:,c], hidden)
         loss += criterion(output.view(args.batch_size, -1), target[:,c])
@@ -63,7 +66,14 @@ def train(inp, target):
     loss.backward()
     decoder_optimizer.step()
 
-    return loss.data[0] / args.chunk_len
+    # This give error for 0-dim tensor
+    #return loss.data[0] / args.chunk_len
+    
+    #print(loss.shape)
+    total_loss += loss.data
+    return total_loss / args.chunk_len
+    
+    
 
 def save():
     save_filename = os.path.splitext(os.path.basename(args.filename))[0] + '.pt'
@@ -97,7 +107,8 @@ try:
 
         if epoch % args.print_every == 0:
             print('[%s (%d %d%%) %.4f]' % (time_since(start), epoch, epoch / args.n_epochs * 100, loss))
-            print(generate(decoder, 'Wh', 100, cuda=args.cuda), '\n')
+            print(generate(decoder, 'Orso vs Runner:', 100, cuda=args.cuda), '\n')
+            print("Loss: ", loss_avg / args.print_every)
 
     print("Saving...")
     save()
