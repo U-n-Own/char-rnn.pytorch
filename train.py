@@ -37,7 +37,7 @@ def random_training_set(chunk_len, batch_size):
     inp = torch.LongTensor(batch_size, chunk_len)
     target = torch.LongTensor(batch_size, chunk_len)
     for bi in range(batch_size):
-        start_index = random.randint(0, file_len - chunk_len)
+        start_index = random.randint(0, file_len - chunk_len-1)
         end_index = start_index + chunk_len + 1
         chunk = file[start_index:end_index]
         inp[bi] = char_tensor(chunk[:-1])
@@ -55,7 +55,14 @@ def train(inp, target):
     
     
     if args.cuda:
-        hidden = hidden.cuda()
+        if args.model == "gru":
+            hidden = hidden.cuda()
+        else:
+            hidden = (hidden[0].cuda(), hidden[1].cuda())
+            
+        # Old code
+        #hidden = hidden.cuda()
+        
     decoder.zero_grad()
     loss = 0
     total_loss = 0
@@ -68,10 +75,13 @@ def train(inp, target):
 
     # This give error for 0-dim tensor
     #return loss.data[0] / args.chunk_len
+   
+    # This should work as well
+    return loss.item()/args.chunk_len 
     
-    #print(loss.shape)
-    total_loss += loss.data
-    return total_loss / args.chunk_len
+    # another working
+    #total_loss += loss.data
+    #return total_loss / args.chunk_len
     
     
 
