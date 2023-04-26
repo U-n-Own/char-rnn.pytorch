@@ -6,12 +6,17 @@ import torch.nn as nn
 from torch.autograd import Variable
 import argparse
 import os
+import random
 
 from tqdm import tqdm
 
 from helpers import *
 from model import *
 from generate import *
+
+
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("runs/")
 
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
@@ -73,6 +78,9 @@ def train(inp, target):
     loss.backward()
     decoder_optimizer.step()
 
+    # For tensoboard: making pending events written to disk
+    writer.flush()
+    
     # This give error for 0-dim tensor
     #return loss.data[0] / args.chunk_len
    
@@ -102,6 +110,12 @@ decoder = CharRNN(
 decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=args.learning_rate)
 criterion = nn.CrossEntropyLoss()
 
+# add graph to tensorboard
+#writer.add_graph(decoder, (torch.zeros(args.batch_size, n_characters), decoder.init_hidden(args.batch_size)))
+
+# Initialize some topic string we could choose for prime stri to generate text 
+dict_topic = {0: 'Orso vs Runner:', 1: 'Matematica:', 2: 'Politica:',3:'Scienza:',4:'Sport:'}
+
 if args.cuda:
     decoder.cuda()
 
@@ -114,15 +128,35 @@ try:
     for epoch in tqdm(range(1, args.n_epochs + 1)):
         loss = train(*random_training_set(args.chunk_len, args.batch_size))
         loss_avg += loss
-
+        writer.add_scalar('Loss/train', loss, epoch)
+        
+        # Histogram and for weights and biases + gradients mode is an encoder with Embedding layer, LSTM and Liner
+        writer.add_histogram('encoder weights', decoder.encoder.weight, epoch)
+        #writer.add_histogram('rnn weights', decoder.rnn._parameters['weight'], epoch)
+        writer.add_histogram('decoder weights', decoder.decoder.weight, epoch)
+        
+        writer.add_histogram('endoer gradients', decoder.encoder.weight.grad, epoch)
+        #writer.add_histogram('rnn gradients', decoder.rnn._parameters['weight'].grad, epoch)
+        writer.add_histogram('decoder gradients', decoder.decoder.weight.grad, epoch)
+        
         if epoch % args.print_every == 0:
             print('[%s (%d %d%%) %.4f]' % (time_since(start), epoch, epoch / args.n_epochs * 100, loss))
             print(generate(decoder, 'Orso vs Runner:', 100, cuda=args.cuda), '\n')
-            print("Loss: ", loss_avg / args.print_every)
+            
+            # For tensorboard inpecting: save generated text every print_every epochs using random topic
+            topic = random.randint(0,4)
+            text_to_show = generate(decoder, dict_topic[topic], 100, cuda=args.cuda)
+            writer.add_text('Text', text_to_show, epoch)
+            
+            print("Loss: ", loss_avg/args.print_every)
+            # Need to reset loss_avg after every print_every epochs
+            loss_avg = 0
+            
 
     print("Saving...")
     save()
-
+    writer.close()
+    
 except KeyboardInterrupt:
     print("Saving before quit...")
     save()
