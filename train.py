@@ -31,6 +31,7 @@ argparser.add_argument('--chunk_len', type=int, default=200)
 argparser.add_argument('--batch_size', type=int, default=100)
 argparser.add_argument('--shuffle', action='store_true')
 argparser.add_argument('--cuda', action='store_true')
+argparser.add_argument('--music', action='store_true')
 args = argparser.parse_args()
 
 if args.cuda:
@@ -140,14 +141,16 @@ try:
         writer.add_histogram('decoder gradients', decoder.decoder.weight.grad, epoch)
         
         if epoch % args.print_every == 0:
-            print('[%s (%d %d%%) %.4f]' % (time_since(start), epoch, epoch / args.n_epochs * 100, loss))
-            print(generate(decoder, 'Orso vs Runner:', 100, cuda=args.cuda), '\n')
             
-            # For tensorboard inpecting: save generated text every print_every epochs using random topic
-            topic = random.randint(0,4)
-            text_to_show = generate(decoder, dict_topic[topic], 100, cuda=args.cuda)
-            writer.add_text('Text', text_to_show, epoch)
+            if not args.music: 
+                print('[%s (%d %d%%) %.4f]' % (time_since(start), epoch, epoch / args.n_epochs * 100, loss))
+                print(generate(decoder, 'Orso vs Runner:', 100, cuda=args.cuda), '\n')
             
+                # For tensorboard inpecting: save generated text every print_every epochs using random topic
+                topic = random.randint(0,4)
+                text_to_show = generate(decoder, dict_topic[topic], 100, cuda=args.cuda)
+                writer.add_text('Text', text_to_show, epoch)
+                
             print("Loss: ", loss_avg/args.print_every)
             # Need to reset loss_avg after every print_every epochs
             loss_avg = 0
