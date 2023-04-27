@@ -37,7 +37,16 @@ args = argparser.parse_args()
 if args.cuda:
     print("Using CUDA")
 
-file, file_len = read_file(args.filename)
+if not args.music:
+    file, file_len = read_file(args.filename)
+else:
+    """ Loading all dataset from dataset/ABC_cleaned/*.abc files """
+    for filename in os.listdir('dataset/ABC_cleaned/'):
+        # Concatenate all files in one file
+        file, file_len = read_file('dataset/ABC_cleaned/'+filename)
+        file += file
+        file_len += file_len 
+        
 
 def random_training_set(chunk_len, batch_size):
     inp = torch.LongTensor(batch_size, chunk_len)
